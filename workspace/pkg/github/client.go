@@ -27,9 +27,9 @@ func NewClient(baseURL string, httpClient *http.Client) *Client {
 	}
 }
 
-func (c *Client) GetIssues(owner, repo string, perPage int) ([]Issue, error) {
+func (c *Client) GetIssues(owner, repo string, limit int) ([]Issue, error) {
 	var allIssues []Issue
-	nextURL := fmt.Sprintf("%s/repos/%s/%s/issues?per_page=%d", c.BaseURL, owner, repo, perPage)
+	nextURL := fmt.Sprintf("%s/repos/%s/%s/issues?per_page=%d", c.BaseURL, owner, repo, limit)
 
 	for nextURL != "" {
 		req, err := http.NewRequest("GET", nextURL, nil)
@@ -41,18 +41,25 @@ func (c *Client) GetIssues(owner, repo string, perPage int) ([]Issue, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
 			return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 		}
 
 		var issues []Issue
-		if err := json.NewDecoder(resp.Body).Decode(&issues); err != nil {
+		err = json.NewDecoder(resp.Body).Decode(&issues)
+		resp.Body.Close()
+		if err != nil {
 			return nil, err
 		}
 
 		allIssues = append(allIssues, issues...)
+
+		if len(allIssues) >= limit {
+			allIssues = allIssues[:limit]
+			break
+		}
 
 		nextURL = getNextPageURL(resp.Header.Get("Link"))
 	}
