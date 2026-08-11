@@ -52,6 +52,10 @@ func (c *Client) GetIssues(owner, repo string, perPage int) ([]Issue, error) {
 			return nil, err
 		}
 
+		if len(issues) == 0 {
+			break
+		}
+
 		allIssues = append(allIssues, issues...)
 
 		nextURL = getNextPageURL(resp.Header.Get("Link"))
