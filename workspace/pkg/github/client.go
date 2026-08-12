@@ -54,13 +54,22 @@ func (c *Client) GetIssues(owner, repo string, limit int) ([]Issue, error) {
 			return nil, err
 		}
 
+		// Safety fallback: empty page means no more items.
+		if len(issues) == 0 {
+			break
+		}
+
 		allIssues = append(allIssues, issues...)
 
-		if len(allIssues) >= limit {
+		// Stop if we've reached the user-specified limit.
+		if limit > 0 && len(allIssues) >= limit {
 			allIssues = allIssues[:limit]
 			break
 		}
 
+		// Pagination must rely on the Link header, NOT on the
+		// returned item count. A sparse page (fewer items than
+		// per_page) with a rel="next" link must continue fetching.
 		nextURL = getNextPageURL(resp.Header.Get("Link"))
 	}
 
