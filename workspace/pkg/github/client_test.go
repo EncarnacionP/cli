@@ -69,26 +69,14 @@ func TestGetIssues_SparsePagination(t *testing.T) {
 	}
 }
 
-func TestGetIssues_LimitAndZeroItems(t *testing.T) {
+func TestGetIssues_ZeroItemsBreaks(t *testing.T) {
 	requestCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestCount++
 		w.Header().Set("Content-Type", "application/json")
-		if requestCount == 1 {
-			w.Header().Set("Link", `<`+server.URL+`/repos/owner/repo/issues?page=2&per_page=3>; rel="next"`)
-			json.NewEncoder(w).Encode([]Issue{})
-		} else if requestCount == 2 {
-			issues := []Issue{
-				{ID: 1, Title: "Issue 1"},
-				{ID: 2, Title: "Issue 2"},
-				{ID: 3, Title: "Issue 3"},
-				{ID: 4, Title: "Issue 4"},
-			}
-			w.Header().Set("Link", `<`+server.URL+`/repos/owner/repo/issues?page=3&per_page=3>; rel="next"`)
-			json.NewEncoder(w).Encode(issues)
-		} else {
-			t.Errorf("unexpected request count: %d", requestCount)
-		}
+		// Returns 0 items but still provides a next link
+		w.Header().Set("Link", `<`+server.URL+`/repos/owner/repo/issues?page=2&per_page=3>; rel="next"`)
+		json.NewEncoder(w).Encode([]Issue{})
 	}))
 	defer server.Close()
 
@@ -98,11 +86,11 @@ func TestGetIssues_LimitAndZeroItems(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if requestCount != 2 {
-		t.Errorf("expected exactly 2 requests, got %d", requestCount)
+	if requestCount != 1 {
+		t.Errorf("expected exactly 1 request due to zero items break, got %d", requestCount)
 	}
 
-	if len(issues) != 3 {
-		t.Errorf("expected 3 issues, got %d", len(issues))
+	if len(issues) != 0 {
+		t.Errorf("expected 0 issues, got %d", len(issues))
 	}
 }

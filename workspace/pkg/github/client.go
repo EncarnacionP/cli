@@ -29,7 +29,13 @@ func NewClient(baseURL string, httpClient *http.Client) *Client {
 
 func (c *Client) GetIssues(owner, repo string, limit int) ([]Issue, error) {
 	var allIssues []Issue
-	nextURL := fmt.Sprintf("%s/repos/%s/%s/issues?per_page=%d", c.BaseURL, owner, repo, limit)
+	
+	perPage := limit
+	if perPage <= 0 || perPage > 100 {
+		perPage = 100
+	}
+
+	nextURL := fmt.Sprintf("%s/repos/%s/%s/issues?per_page=%d", c.BaseURL, owner, repo, perPage)
 
 	for nextURL != "" {
 		req, err := http.NewRequest("GET", nextURL, nil)
@@ -54,9 +60,13 @@ func (c *Client) GetIssues(owner, repo string, limit int) ([]Issue, error) {
 			return nil, err
 		}
 
+		if len(issues) == 0 {
+			break
+		}
+
 		allIssues = append(allIssues, issues...)
 
-		if len(allIssues) >= limit {
+		if limit > 0 && len(allIssues) >= limit {
 			allIssues = allIssues[:limit]
 			break
 		}
